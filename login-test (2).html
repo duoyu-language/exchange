@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login test — Language Exchange</title>
+<style>
+  body{font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:400px;margin:60px auto;padding:0 16px;}
+  input{width:100%;padding:10px;margin-bottom:10px;box-sizing:border-box;}
+  button{width:100%;padding:10px;cursor:pointer;}
+  #status{color:#555;font-size:14px;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div id="signin">
+  <h2>Log in</h2>
+  <input type="email" id="email" placeholder="you@email.com">
+  <button onclick="sendLink()">Send me a login link</button>
+  <p id="status"></p>
+</div>
+
+<div id="loggedin" style="display:none">
+  <h2>You're logged in</h2>
+  <p>Signed in as <b id="who"></b></p>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import {
+    getAuth,
+    sendSignInLinkToEmail,
+    isSignInWithEmailLink,
+    signInWithEmailLink,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+  // Your real project's config, copied from the Firebase console
+  const firebaseConfig = {
+    apiKey: "AIzaSyA6YgqHw_yna6lNT5jSAtQkAVaRl64bp9s",
+    authDomain: "language-ex.firebaseapp.com",
+    projectId: "language-ex",
+    storageBucket: "language-ex.firebasestorage.app",
+    messagingSenderId: "380429680647",
+    appId: "1:380429680647:web:b51f4742891e1a6412aaa2"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  // CHANGE THIS once you know your real GitHub Pages URL.
+  // It must exactly match a URL you've added to Firebase's Authorized Domains.
+  const REDIRECT_URL = "https://duoyu-language.github.io/exchange/";
+
+  // Step 1: someone types their email and asks for a link
+  window.sendLink = function () {
+    const email = document.getElementById('email').value;
+    if (!email) { alert("Enter an email first"); return; }
+    const actionCodeSettings = { url: REDIRECT_URL, handleCodeInApp: true };
+    sendSignInLinkToEmail(auth, email, actionCodeSettings)
+      .then(() => {
+        // Remember the email on this device, so we don't have to ask again when they click the link
+        window.localStorage.setItem('emailForSignIn', email);
+        document.getElementById('status').textContent = "Check your email for the login link.";
+      })
+      .catch((err) => {
+        document.getElementById('status').textContent = "Error: " + err.message;
+      });
+  };
+
+  // Step 2: this runs automatically when someone clicks the emailed link and lands back here
+  if (isSignInWithEmailLink(auth, window.location.href)) {
+    let email = window.localStorage.getItem('emailForSignIn');
+    if (!email) {
+      // Happens if they open the link on a different device than the one they signed up on
+      email = window.prompt('Please confirm your email to finish logging in');
+    }
+    signInWithEmailLink(auth, email, window.location.href)
+      .then(() => {
+        window.localStorage.removeItem('emailForSignIn');
+        window.history.replaceState({}, document.title, REDIRECT_URL); // cleans the link out of the address bar
+      })
+      .catch((err) => {
+        document.getElementById('status').textContent = "Login error: " + err.message;
+      });
+  }
+
+  // Step 3: keeps the page in sync with whether someone's actually logged in
+  onAuthStateChanged(auth, (user) => {
+    document.getElementById('signin').style.display = user ? 'none' : 'block';
+    document.getElementById('loggedin').style.display = user ? 'block' : 'none';
+    if (user) document.getElementById('who').textContent = user.email;
+  });
+</script>
+</body>
+</html>
